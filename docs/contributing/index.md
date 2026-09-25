@@ -79,7 +79,7 @@ Hexis ships 4 Docker images, all published to `ghcr.io/quixiai/`:
 
 | Image | Dockerfile | Base | Contents |
 |-------|-----------|------|----------|
-| `hexis-brain` | `ops/Dockerfile.db` | `postgres:16-bullseye` | Postgres + pgvector + pgsql-http + Apache AGE + schema (`db/*.sql`) |
+| `hexis-brain` | `ops/Dockerfile.db` | `postgres:16-bookworm` | Postgres + pgvector + pgsql-http + Apache AGE + schema (`db/*.sql`) |
 | `hexis-worker` | `ops/Dockerfile.worker` | `python:3.12-slim` | Heartbeat worker, maintenance worker, and API server |
 | `hexis-channels` | `ops/Dockerfile.channels` | `python:3.12-slim` | Channel adapters + messaging library dependencies |
 | `hexis-ui` | `ops/Dockerfile.ui` | `node:20-slim` | Next.js web dashboard (multi-stage build) |
