@@ -24,6 +24,7 @@ def test_python_runtime_images_install_only_from_committed_uv_lock():
 
 
 def test_database_image_makes_init_scripts_world_readable_and_non_executable():
+    """Require safe init SQL permissions in the database image's final stage."""
     instructions = [
         line.strip()
         for line in (ROOT / "ops/Dockerfile.db").read_text().splitlines()
@@ -35,9 +36,8 @@ def test_database_image_makes_init_scripts_world_readable_and_non_executable():
             index
             for index, instruction in enumerate(instructions)
             if re.fullmatch(
-                r"COPY\s+db/\*\.sql\s+/docker-entrypoint-initdb\.d/?",
+                r"(?i:COPY)\s+db/\*\.sql\s+/docker-entrypoint-initdb\.d/?",
                 instruction,
-                re.IGNORECASE,
             )
         ),
         None,
@@ -45,9 +45,8 @@ def test_database_image_makes_init_scripts_world_readable_and_non_executable():
     assert copy_index is not None
 
     chmod_pattern = re.compile(
-        r"RUN\s+chmod\s+(?P<mode>0?[0-7]{3})\s+"
-        r"/docker-entrypoint-initdb\.d/\*\.sql",
-        re.IGNORECASE,
+        r"(?i:RUN)\s+chmod\s+(?P<mode>0?[0-7]{3})\s+"
+        r"/docker-entrypoint-initdb\.d/\*\.sql"
     )
     chmod_instruction = next(
         (
@@ -61,6 +60,10 @@ def test_database_image_makes_init_scripts_world_readable_and_non_executable():
     assert chmod_instruction is not None
     chmod_index, chmod_match = chmod_instruction
     assert copy_index < chmod_index
+    assert not any(
+        re.match(r"(?i:FROM)(?:\s|$)", instruction)
+        for instruction in instructions[copy_index + 1 :]
+    )
     assert not any(
         "/docker-entrypoint-initdb.d" in instruction
         for instruction in instructions[chmod_index + 1 :]
