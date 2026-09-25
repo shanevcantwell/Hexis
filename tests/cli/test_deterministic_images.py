@@ -23,6 +23,23 @@ def test_python_runtime_images_install_only_from_committed_uv_lock():
         assert "sha256sum" in dockerfile
 
 
+def test_database_image_uses_postgres_16_bookworm_base():
+    dockerfile = (ROOT / "ops/Dockerfile.db").read_text()
+    from_instructions = [
+        line.strip()
+        for line in dockerfile.splitlines()
+        if re.match(r"(?i:FROM)(?:\s|$)", line.lstrip())
+    ]
+
+    assert from_instructions
+    assert re.fullmatch(
+        r"(?i:FROM)\s+postgres:16-bookworm(?:@sha256:[0-9a-f]{64})?"
+        r"(?:\s+AS\s+\S+)?",
+        from_instructions[0],
+    )
+    assert "postgres:16-bullseye" not in dockerfile.lower()
+
+
 def test_database_image_makes_init_scripts_world_readable_and_non_executable():
     """Require safe init SQL permissions in the database image's final stage."""
     instructions = [
