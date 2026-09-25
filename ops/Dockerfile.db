@@ -51,3 +51,4 @@ RUN rm -rf /tmp/* && \
 
 # Run schema/init on first database startup.
 COPY db/*.sql /docker-entrypoint-initdb.d/
+RUN chmod 0644 /docker-entrypoint-initdb.d/*.sql

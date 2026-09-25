@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 
@@ -20,6 +21,57 @@ def test_python_runtime_images_install_only_from_committed_uv_lock():
         assert "FROM python:3.12-slim@sha256:" in dockerfile
         assert "date -u" not in dockerfile
         assert "sha256sum" in dockerfile
+
+
+def test_database_image_makes_init_scripts_world_readable_and_non_executable():
+    """Require safe init SQL permissions in the database image's final stage."""
+    instructions = [
+        line.strip()
+        for line in (ROOT / "ops/Dockerfile.db").read_text().splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+
+    copy_index = next(
+        (
+            index
+            for index, instruction in enumerate(instructions)
+            if re.fullmatch(
+                r"(?i:COPY)\s+db/\*\.sql\s+/docker-entrypoint-initdb\.d/?",
+                instruction,
+            )
+        ),
+        None,
+    )
+    assert copy_index is not None
+
+    chmod_pattern = re.compile(
+        r"(?i:RUN)\s+chmod\s+(?P<mode>0?[0-7]{3})\s+"
+        r"/docker-entrypoint-initdb\.d/\*\.sql"
+    )
+    chmod_instruction = next(
+        (
+            (index, match)
+            for index, instruction in enumerate(instructions)
+            if (match := chmod_pattern.fullmatch(instruction))
+        ),
+        None,
+    )
+
+    assert chmod_instruction is not None
+    chmod_index, chmod_match = chmod_instruction
+    assert copy_index < chmod_index
+    assert not any(
+        re.match(r"(?i:FROM)(?:\s|$)", instruction)
+        for instruction in instructions[copy_index + 1 :]
+    )
+    assert not any(
+        "/docker-entrypoint-initdb.d" in instruction
+        for instruction in instructions[chmod_index + 1 :]
+    )
+
+    mode = int(chmod_match.group("mode"), 8)
+    assert mode & 0o444 == 0o444
+    assert mode & 0o111 == 0
 
 
 def test_uv_lock_covers_runtime_and_channel_only_dependencies():
